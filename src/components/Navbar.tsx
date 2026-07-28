@@ -8,7 +8,7 @@ export default function Navbar({ onSearch, onCreateClick }) {
     <nav className="sticky top-0 z-50 bg-amber-50/90 backdrop-blur-md border-b border-amber-200/80 text-amber-950 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
-          
+
           {/* 1. Brand Logo */}
           <div className="flex items-center gap-2.5 cursor-pointer group">
             <div className="p-2 bg-gradient-to-tr from-amber-500 to-orange-400 text-white rounded-2xl font-bold shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform duration-200">
@@ -43,7 +43,7 @@ export default function Navbar({ onSearch, onCreateClick }) {
               <Heart size={16} className="text-rose-400" />
               <span>Favorites</span>
             </a>
-            
+
             {/* Create Recipe Button */}
             <button
               onClick={onCreateClick}
@@ -90,7 +90,7 @@ export default function Navbar({ onSearch, onCreateClick }) {
             <Heart size={18} className="text-rose-400" />
             <span>Favorites</span>
           </a>
-          
+
           <button
             onClick={() => {
               setIsMobileMenuOpen(false);

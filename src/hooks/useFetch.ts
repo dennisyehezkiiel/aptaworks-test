@@ -1,18 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 
-export default function useFetch(fetchFunction, dependencies = []) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
+interface UseFetchResult<T> {
+  data: T | null;
+  loading: boolean;
+  error: Error | unknown | null;
+  setData: Dispatch<SetStateAction<T | null>>;
+}
+
+export default function useFetch<T>(
+  fetchFunction: () => Promise<{ data: T } | T>, 
+  dependencies: React.DependencyList = []
+): UseFetchResult<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | unknown | null>(null);
+
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
 
     fetchFunction()
-      .then((res) => {
+      .then((res: any) => {
         if (isMounted) {
-          setData(res);
+          const resultData = res && typeof res === 'object' && 'data' in res ? res.data : res;
+          setData(resultData);
           setError(null);
         }
       })

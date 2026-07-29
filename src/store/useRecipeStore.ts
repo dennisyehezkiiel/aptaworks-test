@@ -1,38 +1,44 @@
 import { create } from 'zustand';
 import type { RecipeResponse } from '../interfaces/responses/recipeResponses';
 
-const STORAGE_KEY = 'app_recipes';
+const RECIPES_STORAGE_KEY = 'app_recipes';
+const TOTAL_STORAGE_KEY = 'app_recipes_total';
 
 interface RecipeStore {
   recipes: RecipeResponse[];
+  totalItems: number; 
   searchQuery: string;
   isInitialized: boolean;
+  openFormModal: boolean;
+
+  setOpenFormModal: (newValue: boolean) => void;
   setSearchQuery: (query: string) => void;
-  initializeRecipes: (initialRecipes: RecipeResponse[]) => void;
+  initializeRecipes: (initialRecipes: RecipeResponse[], total?: number) => void;
   addRecipe: (newRecipe: RecipeResponse) => void;
   updateRecipe: (updatedRecipe: RecipeResponse) => void;
   deleteRecipe: (id: number) => void;
-
-  //modal
-  openFormModal: boolean;
-  setOpenFormModal: (value: boolean) => void
 }
 
-const saveToLocalStorage = (recipes: RecipeResponse[]) => {
+const saveToLocalStorage = (recipes: RecipeResponse[], totalItems: number) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
+    localStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(recipes));
+    localStorage.setItem(TOTAL_STORAGE_KEY, JSON.stringify(totalItems));
   } catch (err) {
     console.error('Failed to save recipes to localStorage:', err);
   }
 };
 
-const loadFromLocalStorage = (): RecipeResponse[] | null => {
+const loadFromLocalStorage = (): { recipes: RecipeResponse[] | null; totalItems: number } => {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
+    const savedRecipes = localStorage.getItem(RECIPES_STORAGE_KEY);
+    const savedTotal = localStorage.getItem(TOTAL_STORAGE_KEY);
+    return {
+      recipes: savedRecipes ? JSON.parse(savedRecipes) : null,
+      totalItems: savedTotal ? JSON.parse(savedTotal) : 0,
+    };
   } catch (err) {
     console.error('Failed to load recipes from localStorage:', err);
-    return null;
+    return { recipes: null, totalItems: 0 };
   }
 };
 
@@ -40,40 +46,51 @@ export const useRecipeStore = create<RecipeStore>((set, get) => {
   const localData = loadFromLocalStorage();
 
   return {
-    recipes: localData || [],
+    recipes: localData.recipes || [],
+    totalItems: localData.totalItems || 0,
     searchQuery: '',
-    isInitialized: localData !== null && localData.length > 0,
+    isInitialized: localData.recipes !== null && localData.recipes.length > 0,
     openFormModal: false,
 
     setOpenFormModal: (newValue) => set({ openFormModal: newValue }),
-
     setSearchQuery: (query) => set({ searchQuery: query }),
 
-    initializeRecipes: (initialRecipes) => {
+    // Initialize state & sync totalItems
+    initializeRecipes: (initialRecipes, total) => {
       if (!get().isInitialized) {
-        saveToLocalStorage(initialRecipes);
-        set({ recipes: initialRecipes, isInitialized: true });
+        const totalCount = total ?? initialRecipes.length;
+        saveToLocalStorage(initialRecipes, totalCount);
+        set({
+          recipes: initialRecipes,
+          totalItems: totalCount,
+          isInitialized: true,
+        });
       }
     },
 
     addRecipe: (newRecipe) => {
-      const updated = [newRecipe, ...get().recipes];
-      saveToLocalStorage(updated);
-      set({ recipes: updated });
+      const updatedRecipes = [newRecipe, ...get().recipes];
+      const updatedTotal = get().totalItems + 1;
+
+      saveToLocalStorage(updatedRecipes, updatedTotal);
+      set({ recipes: updatedRecipes, totalItems: updatedTotal });
     },
 
     updateRecipe: (updatedRecipe) => {
-      const updated = get().recipes.map((r) =>
+      const updatedRecipes = get().recipes.map((r) =>
         r.id === updatedRecipe.id ? updatedRecipe : r
       );
-      saveToLocalStorage(updated);
-      set({ recipes: updated });
+
+      saveToLocalStorage(updatedRecipes, get().totalItems);
+      set({ recipes: updatedRecipes });
     },
 
     deleteRecipe: (id) => {
-      const updated = get().recipes.filter((r) => r.id !== id);
-      saveToLocalStorage(updated);
-      set({ recipes: updated });
+      const updatedRecipes = get().recipes.filter((r) => r.id !== id);
+      const updatedTotal = Math.max(0, get().totalItems - 1);
+
+      saveToLocalStorage(updatedRecipes, updatedTotal);
+      set({ recipes: updatedRecipes, totalItems: updatedTotal });
     },
   };
 });

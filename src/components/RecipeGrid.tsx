@@ -1,22 +1,36 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from './RecipeCard';
 import { useRecipeStore } from '../store/useRecipeStore';
 import useFetch from '../hooks/useFetch';
 import { recipeService } from '../api/recipeService';
-import RecipeCardSkeleton from './templates/skeleton/RecipeCardSkeleton';
 import type { RecipeResponse } from '../interfaces/responses/recipeResponses';
 import RecipeDetailModal from './RecipeDetailModal';
+import RecipeFormModal from './RecipeFormModa';
+import { Plus } from 'lucide-react';
 
 export default function RecipeGrid() {
   const searchQuery = useRecipeStore((state) => state.searchQuery);
   const recipesFromStore = useRecipeStore((state) => state.recipes);
   const isInitialized = useRecipeStore((state) => state.isInitialized);
   const initializeRecipes = useRecipeStore((state) => state.initializeRecipes);
+
+  // Zustand Local CRUD Actions
+  const addRecipeToStore = useRecipeStore((state) => state.addRecipe);
+  const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe);
   const deleteRecipeFromStore = useRecipeStore((state) => state.deleteRecipe);
 
+  //Zustand for form modal
+  const openFormModal = useRecipeStore((state) => state.openFormModal)
+  const setOpenFormModal = useRecipeStore((state) => state.setOpenFormModal)
+
+  // Detail Modal State
   const [openDetailDialog, setOpenDetailDialog] = useState<boolean>(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
+  // Create / Edit Modal State
+  const [editingRecipe, setEditingRecipe] = useState<RecipeResponse | null>(null);
+
+  // Initial Fetching
   const { data, loading } = useFetch(
     () => (isInitialized ? Promise.resolve(null) : recipeService.getAll(8)),
     [isInitialized]
@@ -30,7 +44,6 @@ export default function RecipeGrid() {
 
   const displayedRecipes = useMemo(() => {
     if (!searchQuery.trim()) return recipesFromStore;
-
     const query = searchQuery.toLowerCase().trim();
     return recipesFromStore.filter(
       (recipe) =>
@@ -40,64 +53,71 @@ export default function RecipeGrid() {
     );
   }, [recipesFromStore, searchQuery]);
 
-  const onEditRecipe = (id: number) => {
+  const handleEditRecipe = (id: number) => {
+    const recipeToEdit = recipesFromStore.find((r) => r.id === id);
+    if (recipeToEdit) {
+      setEditingRecipe(recipeToEdit);
+      setOpenFormModal(true);
+    }
   };
 
-  const onDeleteRecipe = (id: number) => {
+  const handleDeleteRecipe = (id: number) => {
     deleteRecipeFromStore(id);
   };
 
-  const onViewDetailRecipe = (id: number) => {
-    setSelectedId(id);
-    setOpenDetailDialog(true);
+  const handleFormSubmit = (recipeData: RecipeResponse) => {
+    if (editingRecipe) {
+      updateRecipeInStore(recipeData); 
+    } else {
+      addRecipeToStore(recipeData);
+    }
   };
-
-  const closeDetailRecipe = () => {
-    setSelectedId(null);
-    setOpenDetailDialog(false);
-  };
-
-  // 5. Show Loading Skeleton when initially loading API data
-  if (loading && !isInitialized) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {[...Array(8)].map((_, index) => (
-          <RecipeCardSkeleton key={index} />
-        ))}
-      </div>
-    );
-  }
-
-  if (!displayedRecipes || displayedRecipes.length === 0) {
-    return (
-      <div className="text-center py-12 bg-white/50 rounded-3xl border border-amber-200">
-        <p className="text-amber-800 font-semibold">No recipes found!</p>
-      </div>
-    );
-  }
 
   return (
     <>
+      <div className="flex justify-between items-center mb-6">
+        <span className="text-xl font-bold text-gray-800">All Recipes</span>
+        <button
+          onClick={() => setOpenFormModal(true)}
+          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full font-bold text-sm shadow-md shadow-orange-500/25 hover:shadow-lg hover:shadow-orange-500/30 active:scale-95 transition-all duration-200 cursor-pointer"
+        >
+          <Plus size={18} strokeWidth={2.5} />
+          <span>Add Recipe</span>
+        </button>
+      </div>
+
+      {/* Grid List */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {displayedRecipes.map((recipe: RecipeResponse) => (
           <RecipeCard
             key={recipe.id}
             recipe={recipe}
-            onEdit={onEditRecipe}
-            onDelete={onDeleteRecipe}
-            onViewDetail={onViewDetailRecipe}
+            onEdit={handleEditRecipe}
+            onDelete={handleDeleteRecipe}
+            onViewDetail={(id) => {
+              setSelectedId(id);
+              setOpenDetailDialog(true);
+            }}
           />
         ))}
       </div>
 
-      {/* DIALOG */}
+      {/* View Details Modal */}
       {selectedId && openDetailDialog && (
         <RecipeDetailModal
           recipeId={selectedId}
           isOpen={openDetailDialog}
-          onClose={closeDetailRecipe}
+          onClose={() => setOpenDetailDialog(false)}
         />
       )}
+
+      {/* Shared Reusable Create / Edit Form Modal */}
+      <RecipeFormModal
+        isOpen={openFormModal}
+        onClose={() => setOpenFormModal(false)}
+        onSubmit={handleFormSubmit}
+        initialData={editingRecipe}
+      />
     </>
   );
 }

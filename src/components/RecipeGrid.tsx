@@ -7,6 +7,7 @@ import type { RecipeResponse } from '../interfaces/responses/recipeResponses';
 import RecipeDetailModal from './RecipeDetailModal';
 import RecipeFormModal from './RecipeFormModa';
 import { Plus } from 'lucide-react';
+import RecipeCardSkeleton from './templates/skeleton/RecipeCardSkeleton';
 
 export default function RecipeGrid() {
   const searchQuery = useRecipeStore((state) => state.searchQuery);
@@ -67,7 +68,7 @@ export default function RecipeGrid() {
 
   const handleFormSubmit = (recipeData: RecipeResponse) => {
     if (editingRecipe) {
-      updateRecipeInStore(recipeData); 
+      updateRecipeInStore(recipeData)
     } else {
       addRecipeToStore(recipeData);
     }
@@ -87,7 +88,7 @@ export default function RecipeGrid() {
       </div>
 
       {/* Grid List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {!loading && <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {displayedRecipes.map((recipe: RecipeResponse) => (
           <RecipeCard
             key={recipe.id}
@@ -100,7 +101,11 @@ export default function RecipeGrid() {
             }}
           />
         ))}
-      </div>
+      </div>}
+
+      {loading && <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_) => (<RecipeCardSkeleton />))}
+      </div>}
 
       {/* View Details Modal */}
       {selectedId && openDetailDialog && (

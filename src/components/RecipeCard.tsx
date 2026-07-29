@@ -38,14 +38,14 @@ export default function RecipeCard({ recipe, onEdit, onDelete, onViewDetail }: P
         <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-md p-1 rounded-lg">
           <button
             onClick={() => onEdit && onEdit(recipe.id)}
-            className="p-1 text-white hover:text-amber-300 transition"
+            className="p-1 text-white hover:text-amber-300 transition cursor-pointer"
             title="Edit"
           >
             <Pencil size={13} />
           </button>
           <button
             onClick={() => onDelete && onDelete(id)}
-            className="p-1 text-white hover:text-rose-400 transition"
+            className="p-1 text-white hover:text-rose-400 transition cursor-pointer"
             title="Delete"
           >
             <Trash2 size={13} />

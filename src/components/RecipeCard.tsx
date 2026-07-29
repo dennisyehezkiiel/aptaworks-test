@@ -1,7 +1,15 @@
 import React from 'react';
 import { Clock, Users, ChefHat, Star, Pencil, Trash2, Utensils } from 'lucide-react';
+import type { RecipeResponse } from '../interfaces/responses/recipeResponses';
 
-export default function RecipeCard({ recipe, onEdit, onDelete, onViewDetail }) {
+interface Props {
+  recipe: RecipeResponse,
+  onEdit: (id: number) => void
+  onDelete: (id: number) => void
+  onViewDetail: (id: number) => void
+}
+
+export default function RecipeCard({ recipe, onEdit, onDelete, onViewDetail }: Props) {
   const {
     id,
     name,
@@ -19,7 +27,7 @@ export default function RecipeCard({ recipe, onEdit, onDelete, onViewDetail }) {
 
   return (
     <div className="group relative bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden flex flex-col justify-between hover:shadow-lg transition-shadow duration-300">
-      
+
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-amber-50">
         <img
           src={image}
@@ -29,7 +37,7 @@ export default function RecipeCard({ recipe, onEdit, onDelete, onViewDetail }) {
 
         <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-md p-1 rounded-lg">
           <button
-            onClick={() => onEdit && onEdit(recipe)}
+            onClick={() => onEdit && onEdit(recipe.id)}
             className="p-1 text-white hover:text-amber-300 transition"
             title="Edit"
           >
@@ -82,8 +90,8 @@ export default function RecipeCard({ recipe, onEdit, onDelete, onViewDetail }) {
         </div>
 
         <button
-          onClick={() => onViewDetail && onViewDetail(recipe)}
-          className="w-full mt-2 py-2 px-4 rounded-full border-2 border-orange-500 text-orange-500 font-extrabold text-xs tracking-wider uppercase hover:bg-orange-500 hover:text-white transition-colors duration-200"
+          onClick={() => onViewDetail && onViewDetail(recipe.id)}
+          className="w-full mt-2 py-2 px-4 rounded-full border-2 border-orange-500 text-orange-500 font-extrabold text-xs tracking-wider uppercase hover:bg-orange-500 hover:text-white transition-colors duration-200 cursor-pointer"
         >
           View Recipe
         </button>

@@ -10,12 +10,6 @@ export const recipeService = {
   // Search recipes
   search: (query: string) => api.get(`/recipes/search?q=${query}`),
 
-  // Create new recipe
-  create: (recipeData: any) => api.post('/recipes/add', recipeData),
-
-  // Update existing recipe
-  update: (id: string, recipeData: any) => api.put(`/recipes/${id}`, recipeData),
-
   // Delete recipe
   delete: (id: string) => api.delete(`/recipes/${id}`),
 };

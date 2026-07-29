@@ -5,7 +5,7 @@ function App() {
   return (
     <>
       <div className="bg-white min-h-screen">
-        <Navbar onCreateClick={() => { }} />
+        <Navbar />
         <div className="sm:px-6 lg:px-8 my-6">
           <RecipeGrid />
         </div>

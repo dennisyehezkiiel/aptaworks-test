@@ -12,6 +12,10 @@ interface RecipeStore {
   addRecipe: (newRecipe: RecipeResponse) => void;
   updateRecipe: (updatedRecipe: RecipeResponse) => void;
   deleteRecipe: (id: number) => void;
+
+  //modal
+  openFormModal: boolean;
+  setOpenFormModal: (value: boolean) => void
 }
 
 const saveToLocalStorage = (recipes: RecipeResponse[]) => {
@@ -39,6 +43,9 @@ export const useRecipeStore = create<RecipeStore>((set, get) => {
     recipes: localData || [],
     searchQuery: '',
     isInitialized: localData !== null && localData.length > 0,
+    openFormModal: false,
+
+    setOpenFormModal: (newValue) => set({ openFormModal: newValue }),
 
     setSearchQuery: (query) => set({ searchQuery: query }),
 

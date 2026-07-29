@@ -6,8 +6,9 @@ import { recipeService } from '../api/recipeService';
 import type { RecipeResponse } from '../interfaces/responses/recipeResponses';
 import RecipeDetailModal from './RecipeDetailModal';
 import RecipeFormModal from './RecipeFormModa';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import RecipeCardSkeleton from './templates/skeleton/RecipeCardSkeleton';
+import { useDebounce } from '../hooks/useDebounce';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -18,28 +19,27 @@ export default function RecipeGrid() {
   const isInitialized = useRecipeStore((state) => state.isInitialized);
   const initializeRecipes = useRecipeStore((state) => state.initializeRecipes);
 
-  // Zustand Local CRUD Actions
   const addRecipeToStore = useRecipeStore((state) => state.addRecipe);
   const updateRecipeInStore = useRecipeStore((state) => state.updateRecipe);
   const deleteRecipeFromStore = useRecipeStore((state) => state.deleteRecipe);
 
-  // Zustand for form modal
   const openFormModal = useRecipeStore((state) => state.openFormModal);
   const setOpenFormModal = useRecipeStore((state) => state.setOpenFormModal);
 
-  // Detail Modal State
   const [openDetailDialog, setOpenDetailDialog] = useState<boolean>(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // Create / Edit Modal State
   const [editingRecipe, setEditingRecipe] = useState<RecipeResponse | null>(null);
 
-  // Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Initial Fetching
+  const [selectedCuisine, setSelectedCuisine] = useState<string>('all');
+  const [sortCookTime, setSortCookTime] = useState<'default' | 'asc' | 'desc'>('default');
+
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   const { data, loading } = useFetch(
-    () => (isInitialized ? Promise.resolve(null) : recipeService.getAll(30)),
+    () => (isInitialized ? Promise.resolve(null) : recipeService.getAll(50)),
     [isInitialized]
   );
 
@@ -49,25 +49,50 @@ export default function RecipeGrid() {
     }
   }, [data, isInitialized, initializeRecipes]);
 
+  const cuisineOptions = useMemo(() => {
+    const cuisines = recipesFromStore
+      .map((r) => r.cuisine)
+      .filter((c): c is string => Boolean(c));
+    return Array.from(new Set(cuisines)).sort();
+  }, [recipesFromStore]);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, selectedCuisine, sortCookTime]);
 
-  const filteredRecipes = useMemo(() => {
-    if (!searchQuery.trim()) return recipesFromStore;
-    const query = searchQuery.toLowerCase().trim();
-    return recipesFromStore.filter(
-      (recipe) =>
-        recipe.name.toLowerCase().includes(query) ||
-        recipe.cuisine?.toLowerCase().includes(query) ||
-        recipe.tags?.some((tag) => tag.toLowerCase().includes(query))
-    );
-  }, [recipesFromStore, searchQuery]);
+  const processedRecipes = useMemo(() => {
+    let result = [...recipesFromStore];
 
-  const effectiveTotal = searchQuery.trim() ? filteredRecipes.length : totalItems;
-  const totalPages = Math.round(effectiveTotal / ITEMS_PER_PAGE);
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase().trim();
+      result = result.filter(
+        (recipe) =>
+          recipe.name.toLowerCase().includes(query) ||
+          recipe.cuisine?.toLowerCase().includes(query) ||
+          recipe.tags?.some((tag) => tag.toLowerCase().includes(query))
+      );
+    }
 
-  console.log(effectiveTotal, totalPages, ">>>cek dua");
+    if (selectedCuisine !== 'all') {
+      result = result.filter(
+        (recipe) => recipe.cuisine?.toLowerCase() === selectedCuisine.toLowerCase()
+      );
+    }
+
+    if (sortCookTime === 'asc') {
+      result.sort((a, b) => (a.cookTimeMinutes || 0) - (b.cookTimeMinutes || 0));
+    } else if (sortCookTime === 'desc') {
+      result.sort((a, b) => (b.cookTimeMinutes || 0) - (a.cookTimeMinutes || 0));
+    }
+
+    return result;
+  }, [recipesFromStore, debouncedSearchQuery, selectedCuisine, sortCookTime]);
+
+  const isFilteredOrSorted =
+    searchQuery.trim() !== '' || selectedCuisine !== 'all' || sortCookTime !== 'default';
+
+  const effectiveTotal = isFilteredOrSorted ? processedRecipes.length : totalItems;
+  const totalPages = useMemo(() => (Math.ceil(effectiveTotal / ITEMS_PER_PAGE)), [effectiveTotal, ITEMS_PER_PAGE]);
 
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
@@ -77,8 +102,8 @@ export default function RecipeGrid() {
 
   const paginatedRecipes = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredRecipes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredRecipes, currentPage]);
+    return processedRecipes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [processedRecipes, currentPage]);
 
   const handleEditRecipe = (id: number) => {
     const recipeToEdit = recipesFromStore.find((r) => r.id === id);
@@ -102,20 +127,54 @@ export default function RecipeGrid() {
 
   return (
     <>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <span className="text-xl font-bold text-gray-800">
           All Recipes ({effectiveTotal})
         </span>
-        <button
-          onClick={() => {
-            setEditingRecipe(null);
-            setOpenFormModal(true);
-          }}
-          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full font-bold text-sm shadow-md shadow-orange-500/25 hover:shadow-lg hover:shadow-orange-500/30 active:scale-95 transition-all duration-200 cursor-pointer"
-        >
-          <Plus size={18} strokeWidth={2.5} />
-          <span>Add Recipe</span>
-        </button>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-white border border-gray-200 px-3 py-2 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
+            <SlidersHorizontal size={14} className="text-gray-400" />
+            <select
+              value={selectedCuisine}
+              onChange={(e) => setSelectedCuisine(e.target.value)}
+              className="bg-transparent focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="all">All Cuisines</option>
+              {cuisineOptions.map((cuisine) => (
+                <option key={cuisine} value={cuisine}>
+                  {cuisine}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-white border border-gray-200 px-3 py-2 rounded-full text-xs font-semibold text-gray-700 shadow-sm">
+            <ArrowUpDown size={14} className="text-gray-400" />
+            <select
+              value={sortCookTime}
+              onChange={(e) =>
+                setSortCookTime(e.target.value as 'default' | 'asc' | 'desc')
+              }
+              className="bg-transparent focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="default">Sort: Default</option>
+              <option value="asc">Cook Time: Low to High</option>
+              <option value="desc">Cook Time: High to Low</option>
+            </select>
+          </div>
+
+          <button
+            onClick={() => {
+              setEditingRecipe(null);
+              setOpenFormModal(true);
+            }}
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full font-bold text-sm shadow-md shadow-orange-500/25 hover:shadow-lg hover:shadow-orange-500/30 active:scale-95 transition-all duration-200 cursor-pointer"
+          >
+            <Plus size={18} strokeWidth={2.5} />
+            <span>Add Recipe</span>
+          </button>
+        </div>
       </div>
 
       {!loading && (
@@ -132,6 +191,15 @@ export default function RecipeGrid() {
               }}
             />
           ))}
+        </div>
+      )}
+
+      {!loading && paginatedRecipes.length === 0 && (
+        <div className="text-center py-12 bg-white/60 rounded-3xl border border-amber-200/60">
+          <p className="text-amber-900 font-bold text-base">No recipes found!</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Try resetting your filters or search term.
+          </p>
         </div>
       )}
 
@@ -160,8 +228,8 @@ export default function RecipeGrid() {
                 key={pageNum}
                 onClick={() => setCurrentPage(pageNum)}
                 className={`w-9 h-9 rounded-xl font-bold text-xs transition ${currentPage === pageNum
-                    ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                  ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+                  : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                   }`}
               >
                 {pageNum}
